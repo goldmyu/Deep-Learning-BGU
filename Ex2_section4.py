@@ -4,6 +4,7 @@ from __future__ import print_function
 
 import tensorflow as tf
 import numpy as np
+import sys
 
 # Implementation of section 4 in Ex2
 
@@ -73,11 +74,7 @@ def cnn_model(features, labels, mode):
     if mode == tf.estimator.ModeKeys.TRAIN:
         optimizer = tf.train.GradientDescentOptimizer(learning_rate=0.001)
         train_op = optimizer.minimize(loss=loss, global_step=tf.train.get_global_step())
-
-        tensors_to_log = {"loss": loss}
-        logging_hook = tf.train.LoggingTensorHook(tensors=tensors_to_log, every_n_iter=250)
-
-        return tf.estimator.EstimatorSpec(mode=mode, loss=loss, train_op=train_op, training_hooks=[logging_hook])
+        return tf.estimator.EstimatorSpec(mode=mode, loss=loss, train_op=train_op)
 
     # Add evaluation metrics (for EVAL mode)
     eval_metric_ops = {
@@ -103,8 +100,25 @@ def main(unused_argv):
     validation_data = mnist_data.validation.images
     validation_labels = np.asarray(mnist_data.validation.labels, dtype=np.int32)
 
-    mnist_classifier = tf.estimator.Estimator(model_fn=cnn_model)
+    run_config = tf.estimator.RunConfig(
+        log_step_count_steps=250,
+    )
 
+    mnist_classifier = tf.estimator.Estimator(model_fn=cnn_model, config=run_config)
+
+    # Evaluate the model using the test-set and print results
+    eval_test_input_fn = tf.estimator.inputs.numpy_input_fn(
+        x={"x": test_data},
+        y=test_labels,
+        num_epochs=1,
+        shuffle=False)
+
+    # Evaluate the model using the validation-set and print results
+    eval_validate_input_fn = tf.estimator.inputs.numpy_input_fn(
+        x={"x": validation_data},
+        y=validation_labels,
+        num_epochs=1,
+        shuffle=False)
 
     # Train the model
     train_input_fn = tf.estimator.inputs.numpy_input_fn(
@@ -114,24 +128,23 @@ def main(unused_argv):
         num_epochs=None,
         shuffle=True)
 
-    mnist_classifier.train(input_fn=train_input_fn, steps=5000)
+    eval_validate_results_past_accuracy = 0
+    counter = 0
+    for i in range(5000):
+        if counter == 3:
+            sys.exit("did not improve accuracy after 3 iteration on the validation-set, aborting execution")
 
-    # Evaluate the model using the test-set and print results
-    eval_test_input_fn = tf.estimator.inputs.numpy_input_fn(
-        x={"x": test_data},
-        y=test_labels,
-        num_epochs=1,
-        shuffle=False)
+        mnist_classifier.train(input_fn=train_input_fn, steps=1)
+        eval_validate_results = mnist_classifier.evaluate(input_fn=eval_validate_input_fn)
+        print("the accuracy on the validation set is : %g" % eval_validate_results["accuracy"])
+        if eval_validate_results["accuracy"] <= eval_validate_results_past_accuracy:
+            counter += 1
+        else:
+            counter = 0
+        eval_validate_results_past_accuracy = eval_validate_results["accuracy"]
 
     eval_test_results = mnist_classifier.evaluate(input_fn=eval_test_input_fn)
     print("the accuracy on the test set is : %g" % eval_test_results["accuracy"])
-
-    # Evaluate the model using the validation-set and print results
-    eval_validate_input_fn = tf.estimator.inputs.numpy_input_fn(
-        x={"x": validation_data},
-        y=validation_labels,
-        num_epochs=1,
-        shuffle=False)
 
     eval_validate_results = mnist_classifier.evaluate(input_fn=eval_validate_input_fn)
     print("the accuracy on the validation set is : %g" % eval_validate_results["accuracy"])
