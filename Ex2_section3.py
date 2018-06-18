@@ -5,6 +5,9 @@ from __future__ import print_function
 import tensorflow as tf
 import numpy as np
 
+# Implementation of section 3 in Ex2
+
+
 tf.logging.set_verbosity(tf.logging.INFO)
 
 
@@ -70,7 +73,6 @@ def cnn_model(features, labels, mode):
     if mode == tf.estimator.ModeKeys.TRAIN:
         optimizer = tf.train.GradientDescentOptimizer(learning_rate=0.001)
         train_op = optimizer.minimize(loss=loss, global_step=tf.train.get_global_step())
-
         return tf.estimator.EstimatorSpec(mode=mode, loss=loss, train_op=train_op)
 
     # Add evaluation metrics (for EVAL mode)
@@ -99,20 +101,10 @@ def main(unused_argv):
 
     run_config = tf.estimator.RunConfig(
         log_step_count_steps=250,
-        train_distribute=None,
-        keep_checkpoint_max=0,
-        save_checkpoints_secs=None,
-        save_checkpoints_steps=None
     )
 
-    mnist_classifier = tf.estimator.Estimator(model_fn=cnn_model, model_dir="/tmp/mnist_convnet_model", config=run_config)
+    mnist_classifier = tf.estimator.Estimator(model_fn=cnn_model, config=run_config)
 
-    # Set up logging for predictions
-    # Log the values in the "Softmax" tensor with label "probabilities"
-
-    # TODO - check the hooks for logging the lost\cost during training
-    # tensors_to_log = {"loss": "loss"}
-    # logging_hook = tf.train.LoggingTensorHook(tensors=tensors_to_log, every_n_iter=250)
 
     # Train the model
     train_input_fn = tf.estimator.inputs.numpy_input_fn(
@@ -122,15 +114,7 @@ def main(unused_argv):
         num_epochs=None,
         shuffle=True)
 
-    # mnist_classifier.train(input_fn=train_input_fn, steps=500, hooks=[logging_hook])
     mnist_classifier.train(input_fn=train_input_fn, steps=5000)
-
-    # tf.logging.log_every_n(
-    #     tf.logging.INFO,
-    #     "The cost is :",
-    #     250,
-    #     tf.losses
-    # )
 
     # Evaluate the model using the test-set and print results
     eval_test_input_fn = tf.estimator.inputs.numpy_input_fn(
