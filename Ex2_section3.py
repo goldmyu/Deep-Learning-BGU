@@ -97,22 +97,21 @@ def main(unused_argv):
     validation_data = mnist_data.validation.images
     validation_labels = np.asarray(mnist_data.validation.labels, dtype=np.int32)
 
-    config = tf.estimator.RunConfig(
-        # save_summary_steps=250,
+    run_config = tf.estimator.RunConfig(
         log_step_count_steps=250,
         train_distribute=None,
-        # keep_checkpoint_max=0,
+        keep_checkpoint_max=0,
         save_checkpoints_secs=None,
         save_checkpoints_steps=None
     )
 
-    mnist_classifier = tf.estimator.Estimator(model_fn=cnn_model, model_dir="/tmp/mnist_convnet_model", config = config)
+    mnist_classifier = tf.estimator.Estimator(model_fn=cnn_model, model_dir="/tmp/mnist_convnet_model", config=run_config)
 
     # Set up logging for predictions
     # Log the values in the "Softmax" tensor with label "probabilities"
 
+    # TODO - check the hooks for logging the lost\cost during training
     # tensors_to_log = {"loss": "loss"}
-
     # logging_hook = tf.train.LoggingTensorHook(tensors=tensors_to_log, every_n_iter=250)
 
     # Train the model
@@ -124,7 +123,14 @@ def main(unused_argv):
         shuffle=True)
 
     # mnist_classifier.train(input_fn=train_input_fn, steps=500, hooks=[logging_hook])
-    mnist_classifier.train(input_fn=train_input_fn, steps=500)
+    mnist_classifier.train(input_fn=train_input_fn, steps=5000)
+
+    # tf.logging.log_every_n(
+    #     tf.logging.INFO,
+    #     "The cost is :",
+    #     250,
+    #     tf.losses
+    # )
 
     # Evaluate the model using the test-set and print results
     eval_test_input_fn = tf.estimator.inputs.numpy_input_fn(
