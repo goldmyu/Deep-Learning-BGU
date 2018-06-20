@@ -8,9 +8,7 @@
 import tensorflow as tf
 from tensorflow.examples.tutorials.mnist import input_data
 
-
 tf.logging.set_verbosity(tf.logging.INFO)
-
 
 # ------------- utility functions ---------------------
 
@@ -29,7 +27,6 @@ def conv2d(x, W):
     return tf.nn.conv2d(x, W, strides=[1, 1, 1, 1], padding='SAME')
 
 
-# TODO what is the stride here?
 def max_pool_2x2(x):
     return tf.nn.max_pool(x, ksize=[1, 2, 2, 1],
                           strides=[1, 2, 2, 1], padding='SAME')
@@ -103,7 +100,8 @@ for i in range(5000):
 
     if i % 250 == 0:
         train_accuracy = accuracy.eval(feed_dict={x: batch[0], y_: batch[1]})
-        print("step %d, training accuracy %g" % (i, train_accuracy))
+        cross_entropy_loss = cross_entropy.eval(feed_dict={x: batch[0], y_: batch[1]})
+        print("step %d, the training loss is : %g and training accuracy is : %g" % (i,cross_entropy_loss, train_accuracy))
 
     train_step.run(feed_dict={x: batch[0], y_: batch[1]})
 
