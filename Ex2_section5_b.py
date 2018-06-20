@@ -42,7 +42,7 @@ def cnn_model(features, labels, mode):
     # sixth max-pooling layer
     pool2 = tf.layers.max_pooling2d(inputs=norm2, pool_size=[2, 2], strides=2)
 
-    # flatning the max-pool output for the following dense layer
+    # flatting the max-pool output for the following dense layer
     pool2_flat = tf.reshape(pool2, [-1, 7 * 7 * 64])
 
     # seventh layer - dense of 1024
@@ -54,17 +54,6 @@ def cnn_model(features, labels, mode):
     dense2 = tf.layers.dense(inputs=dropout, units=1024, activation=tf.nn.relu)
 
     logits = tf.layers.dense(inputs=dense2, units=10)
-
-    predictions = {
-        # Generate predictions (for PREDICT and EVAL mode)
-        "classes": tf.argmax(input=logits, axis=1),
-        # Add `softmax_tensor` to the graph. It is used for PREDICT and by the
-        # `logging_hook`.
-        "probabilities": tf.nn.softmax(logits, name="softmax_tensor")
-    }
-
-    if mode == tf.estimator.ModeKeys.PREDICT:
-        return tf.estimator.EstimatorSpec(mode=mode, predictions=predictions)
 
     # Calculate Loss (for both TRAIN and EVAL modes)
     loss = tf.losses.sparse_softmax_cross_entropy(labels=labels, logits=logits)
@@ -78,7 +67,7 @@ def cnn_model(features, labels, mode):
     # Add evaluation metrics (for EVAL mode)
     eval_metric_ops = {
         "accuracy": tf.metrics.accuracy(
-            labels=labels, predictions=predictions["classes"])}
+            labels=labels, predictions=tf.argmax(input=logits, axis=1))}
     return tf.estimator.EstimatorSpec(
         mode=mode, loss=loss, eval_metric_ops=eval_metric_ops)
 
@@ -104,7 +93,6 @@ def main(unused_argv):
     )
 
     mnist_classifier = tf.estimator.Estimator(model_fn=cnn_model, config=run_config)
-
 
     # Train the model
     train_input_fn = tf.estimator.inputs.numpy_input_fn(

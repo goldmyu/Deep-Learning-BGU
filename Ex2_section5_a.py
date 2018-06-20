@@ -55,28 +55,24 @@ def cnn_model(features, labels, mode):
 
     logits = tf.layers.dense(inputs=dense2, units=10)
 
-    predictions = {
-        # Generate predictions (for PREDICT and EVAL mode)
-        "classes": tf.argmax(input=logits, axis=1),
-        # Add `softmax_tensor` to the graph. It is used for PREDICT and by the
-        # `logging_hook`.
-        "probabilities": tf.nn.softmax(logits, name="softmax_tensor")
-    }
-
-    if mode == tf.estimator.ModeKeys.PREDICT:
-        return tf.estimator.EstimatorSpec(mode=mode, predictions=predictions)
-
     # Calculate Loss (for both TRAIN and EVAL modes)
     loss = tf.losses.sparse_softmax_cross_entropy(labels=labels, logits=logits)
 
     # Configure the Training Op (for TRAIN mode)
     if mode == tf.estimator.ModeKeys.TRAIN:
         global_step = tf.train.get_global_step()
-        alpha = tf.get_variable("alpha", [0.001*(1/2)*(global_step%400)])
-        optimizer = tf.train.GradientDescentOptimizer(learning_rate=alpha)
+
+        learning_rate = tf.train.exponential_decay(
+            0.001,  # Base learning rate.
+            global_step,  # Current index into the dataset.
+            400,  # Decay step.
+            0.5,  # Decay rate.
+            staircase=True)
+
+        optimizer = tf.train.GradientDescentOptimizer(learning_rate=learning_rate)
         train_op = optimizer.minimize(loss=loss, global_step=tf.train.get_global_step())
 
-        tensors_to_log = {"alpha": alpha}
+        tensors_to_log = {"learning_rate": learning_rate}
         logging_hook = tf.train.LoggingTensorHook(tensors=tensors_to_log, every_n_iter=400)
 
         return tf.estimator.EstimatorSpec(mode=mode, loss=loss, train_op=train_op, training_hooks=[logging_hook])
@@ -84,7 +80,7 @@ def cnn_model(features, labels, mode):
     # Add evaluation metrics (for EVAL mode)
     eval_metric_ops = {
         "accuracy": tf.metrics.accuracy(
-            labels=labels, predictions=predictions["classes"])}
+            labels=labels, predictions=tf.argmax(input=logits, axis=1))}
     return tf.estimator.EstimatorSpec(
         mode=mode, loss=loss, eval_metric_ops=eval_metric_ops)
 
@@ -110,7 +106,6 @@ def main(unused_argv):
     )
 
     mnist_classifier = tf.estimator.Estimator(model_fn=cnn_model, config=run_config)
-
 
     # Train the model
     train_input_fn = tf.estimator.inputs.numpy_input_fn(
