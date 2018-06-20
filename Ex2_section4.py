@@ -121,7 +121,8 @@ def main(unused_argv):
     counter = 0
     for i in range(5000):
         if counter == 3:
-            sys.exit("did not improve accuracy after 3 iteration on the validation-set, aborting execution")
+            print("did not improve accuracy after 3 iteration on the validation-set, aborting training...")
+            break
 
         mnist_classifier.train(input_fn=train_input_fn, steps=1)
         eval_validate_results = mnist_classifier.evaluate(input_fn=eval_validate_input_fn)
